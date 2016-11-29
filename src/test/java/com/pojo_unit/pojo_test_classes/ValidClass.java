@@ -5,6 +5,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class ValidClass
 {
@@ -27,6 +28,8 @@ public class ValidClass
     private Double testDouble;
     private double testPrimitiveDouble;
     private BigDecimal testBigDecimal;
+    private List<String> testList;
+    private String[] testArray;
 
     public Boolean isTestBoolean() {
         return testBoolean;
@@ -164,6 +167,22 @@ public class ValidClass
         this.testBigDecimal = testBigDecimal;
     }
 
+    public List<String> getTestList() {
+        return testList;
+    }
+
+    public void setTestList(List<String> testList) {
+        this.testList = testList;
+    }
+
+    public String[] getTestArray() {
+        return testArray;
+    }
+
+    public void setTestArray(String[] testArray) {
+        this.testArray = testArray;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -190,6 +209,8 @@ public class ValidClass
                 .append(testFloat, that.testFloat)
                 .append(testDouble, that.testDouble)
                 .append(testBigDecimal, that.testBigDecimal)
+                .append(testList, that.testList)
+                .append(testArray, that.testArray)
                 .isEquals();
     }
 
@@ -213,6 +234,8 @@ public class ValidClass
                 .append(testDouble)
                 .append(testPrimitiveDouble)
                 .append(testBigDecimal)
+                .append(testList)
+                .append(testArray)
                 .toHashCode();
     }
 
@@ -236,6 +259,8 @@ public class ValidClass
                 .append("testDouble", testDouble)
                 .append("testPrimitiveDouble", testPrimitiveDouble)
                 .append("testBigDecimal", testBigDecimal)
+                .append("testList", testList)
+                .append("testArray", testArray)
                 .toString();
     }
 }

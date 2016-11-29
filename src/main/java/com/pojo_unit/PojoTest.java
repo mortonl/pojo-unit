@@ -2,12 +2,14 @@ package com.pojo_unit;
 
 import org.apache.commons.lang3.RandomStringUtils;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -19,6 +21,8 @@ import static org.junit.Assert.fail;
 public class PojoTest {
     private static final String JAVA_LANG = "java.lang.";
     private static final String JAVA_MATH = "java.math.";
+    private static final String JAVA_UTIL = "java.util.";
+
     private final Class<?> clazzToTest;
     private final List<Field> fields;
 
@@ -82,7 +86,14 @@ public class PojoTest {
 
             Object randomValue = getRandomValueForField(field);
             stringValues.add(field.getName());
-            stringValues.add(randomValue.toString());
+
+            String toString = randomValue.toString();
+
+            if(toString.contains("[L"))
+            {
+                toString = Arrays.toString((Object[]) randomValue).replaceAll("\\[", "").replaceAll("\\]","");
+            }
+            stringValues.add(toString);
 
             try {
                 setterMethod.invoke(testableInstance, randomValue);
@@ -266,11 +277,24 @@ public class PojoTest {
     }
 
     private Object getRandomValueForField(Field field) {
+        String typeName = convertTypeName(field.getType().getName());
+
+        return getRandomValueForNamedType(field, typeName);
+    }
+
+    private Object getRandomValueForNamedType(Field field, String typeName) {
         Object randomValue = null;
 
         Random random = new Random();
+        Boolean isArray = false;
 
-        String typeName = getTypeName(field);
+        if(typeName.contains("Array"))
+        {
+            isArray = true;
+            int endIndex = typeName.length() - "Array".length();
+
+            typeName = typeName.substring(0, endIndex);
+        }
 
         switch (typeName) {
             case "Byte":
@@ -313,7 +337,12 @@ public class PojoTest {
             case "boolean":
                 randomValue = random.nextBoolean();
                 break;
+            case "List":
+                String namedType = field.getGenericType().toString().replace("java.util.List<", "").replace(">", "");
 
+                Object randomListContent = getRandomValueForNamedType(field, convertTypeName(namedType));
+                randomValue = Arrays.asList(randomListContent);
+                break;
             default:
                 try {
                     randomValue = field.getType().newInstance();
@@ -321,16 +350,33 @@ public class PojoTest {
                     e.printStackTrace();
                 }
         }
+
+        if(isArray)
+        {
+            Object arrayInstance = Array.newInstance(field.getType().getComponentType(), 1);
+            Array.set(arrayInstance, 0, randomValue);
+
+            return arrayInstance;
+        }
+
         return randomValue;
     }
 
-    private String getTypeName(Field field) {
-        String typeName = field.getType().getName();
+    private String convertTypeName(String typeName) {
+        if (typeName.contains("[L"))
+        {
+            typeName = typeName.substring("[L".length(),typeName.length() - 1);
+            typeName = typeName.concat("Array");
+        }
+
         if (typeName.contains(JAVA_LANG)) {
             typeName = typeName.substring(JAVA_LANG.length(), typeName.length());
         }
-        if (typeName.contains(JAVA_MATH)) {
+        else if (typeName.contains(JAVA_MATH)) {
             typeName = typeName.substring(JAVA_MATH.length(), typeName.length());
+        }
+        else if (typeName.contains(JAVA_UTIL)) {
+            typeName = typeName.substring(JAVA_UTIL.length(), typeName.length());
         }
         return typeName;
     }
