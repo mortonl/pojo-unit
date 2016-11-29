@@ -163,9 +163,15 @@ public class PojoTest {
             Object randomValue = getRandomValueForField(field);
             Object differentRandomValue = getRandomValueForField(field);
 
+            Integer attemptNumber = 0;
             while(differentRandomValue.equals(randomValue))
             {
+                if(attemptNumber > 5)
+                {
+                    fail("Could not generate two different random values for field: " + field.getName());
+                }
                 differentRandomValue = getRandomValueForField(field);
+                attemptNumber++;
             }
 
             try {
