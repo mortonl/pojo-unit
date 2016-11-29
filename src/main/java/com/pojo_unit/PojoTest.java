@@ -5,6 +5,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,6 +18,7 @@ import static org.junit.Assert.fail;
 
 public class PojoTest {
     private static final String JAVA_LANG = "java.lang.";
+    private static final String JAVA_MATH = "java.math.";
     private final Class<?> clazzToTest;
     private final List<Field> fields;
 
@@ -23,7 +26,17 @@ public class PojoTest {
         this.clazzToTest = clazzToTest;
 
         List<Field> fieldArrayList = new ArrayList<Field>();
-        Collections.addAll(fieldArrayList, clazzToTest.getDeclaredFields());
+
+        Field[] declaredFields = clazzToTest.getDeclaredFields();
+
+        for(Field field : declaredFields)
+        {
+            if(!Modifier.isFinal(field.getModifiers()))
+            {
+                fieldArrayList.add(field);
+            }
+        }
+
         this.fields = Collections.unmodifiableList(fieldArrayList);
     }
 
@@ -274,6 +287,9 @@ public class PojoTest {
             case "int":
                 randomValue = random.nextInt();
                 break;
+            case "BigDecimal":
+                randomValue = BigDecimal.valueOf(random.nextDouble());
+                break;
             case "Long":
             case "long":
                 randomValue = random.nextLong();
@@ -312,6 +328,9 @@ public class PojoTest {
         String typeName = field.getType().getName();
         if (typeName.contains(JAVA_LANG)) {
             typeName = typeName.substring(JAVA_LANG.length(), typeName.length());
+        }
+        if (typeName.contains(JAVA_MATH)) {
+            typeName = typeName.substring(JAVA_MATH.length(), typeName.length());
         }
         return typeName;
     }

@@ -4,8 +4,12 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
+import java.math.BigDecimal;
+
 public class ValidClass
 {
+    private static final String TEST_STRING_CONSTANT = "someImportantText";
+
     private Boolean testBoolean;
     private boolean testPrimitiveBoolean;
     private Character testCharacter;
@@ -22,6 +26,7 @@ public class ValidClass
     private float testPrimitiveFloat;
     private Double testDouble;
     private double testPrimitiveDouble;
+    private BigDecimal testBigDecimal;
 
     public Boolean isTestBoolean() {
         return testBoolean;
@@ -151,6 +156,14 @@ public class ValidClass
         this.testPrimitiveDouble = testPrimitiveDouble;
     }
 
+    public BigDecimal getTestBigDecimal() {
+        return testBigDecimal;
+    }
+
+    public void setTestBigDecimal(BigDecimal testBigDecimal) {
+        this.testBigDecimal = testBigDecimal;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -176,6 +189,7 @@ public class ValidClass
                 .append(testLong, that.testLong)
                 .append(testFloat, that.testFloat)
                 .append(testDouble, that.testDouble)
+                .append(testBigDecimal, that.testBigDecimal)
                 .isEquals();
     }
 
@@ -198,6 +212,7 @@ public class ValidClass
                 .append(testPrimitiveFloat)
                 .append(testDouble)
                 .append(testPrimitiveDouble)
+                .append(testBigDecimal)
                 .toHashCode();
     }
 
@@ -220,6 +235,7 @@ public class ValidClass
                 .append("testPrimitiveFloat", testPrimitiveFloat)
                 .append("testDouble", testDouble)
                 .append("testPrimitiveDouble", testPrimitiveDouble)
+                .append("testBigDecimal", testBigDecimal)
                 .toString();
     }
 }
