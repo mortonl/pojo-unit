@@ -35,7 +35,7 @@ public class PojoTest {
 
         for(Field field : declaredFields)
         {
-            if(!Modifier.isFinal(field.getModifiers()))
+            if(!Modifier.isFinal(field.getModifiers()) && !field.isSynthetic())
             {
                 fieldArrayList.add(field);
             }
