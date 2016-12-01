@@ -302,6 +302,8 @@ public class PojoTest {
             typeName = typeName.substring(0, endIndex);
         }
 
+        Class<?> type = field.getType();
+
         switch (typeName) {
             case "Byte":
             case "byte":
@@ -351,15 +353,23 @@ public class PojoTest {
                 break;
             default:
                 try {
-                    randomValue = field.getType().newInstance();
+                    randomValue = type.newInstance();
                 } catch (InstantiationException | IllegalAccessException e) {
-                    e.printStackTrace();
+                    if(type.isEnum())
+                    {
+                        int x = random.nextInt(type.getEnumConstants().length);
+                        randomValue =  type.getEnumConstants()[x];
+                    }
+                    else
+                    {
+                        randomValue = null;
+                    }
                 }
         }
 
         if(isArray)
         {
-            Object arrayInstance = Array.newInstance(field.getType().getComponentType(), 1);
+            Object arrayInstance = Array.newInstance(type.getComponentType(), 1);
             Array.set(arrayInstance, 0, randomValue);
 
             return arrayInstance;
