@@ -1,30 +1,23 @@
 package com.pojo_unit;
 
-import org.apache.commons.lang3.RandomStringUtils;
-
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class PojoTest {
-    private static final String JAVA_LANG = "java.lang.";
-    private static final String JAVA_MATH = "java.math.";
-    private static final String JAVA_UTIL = "java.util.";
 
     private final Class<?> clazzToTest;
     private final List<Field> fields;
+    private final RandomObjectFactory randomObjectFactory = new RandomObjectFactory();
 
     public PojoTest(final Class<?> clazzToTest) {
         this.clazzToTest = clazzToTest;
@@ -35,13 +28,21 @@ public class PojoTest {
 
         for(Field field : declaredFields)
         {
-            if(!Modifier.isFinal(field.getModifiers()) && !field.isSynthetic())
+            if(isTestableField(field))
             {
                 fieldArrayList.add(field);
             }
         }
 
         this.fields = Collections.unmodifiableList(fieldArrayList);
+    }
+
+    private boolean isTestableField(Field field) {
+        return !isFieldFinal(field) && !field.isSynthetic();
+    }
+
+    private boolean isFieldFinal(Field field) {
+        return Modifier.isFinal(field.getModifiers());
     }
 
     public void testGettersAndSetters(List<String> excludedFields) {
@@ -53,10 +54,9 @@ public class PojoTest {
             }
 
             Method getterMethod = getGetterMethod(field);
-
             Method setterMethod = getSetterMethod(field);
 
-            Object randomValue = getRandomValueForField(field);
+            Object randomValue = randomObjectFactory.getRandomValueForField(field);
 
             try {
                 setterMethod.invoke(testableInstance, randomValue);
@@ -70,7 +70,7 @@ public class PojoTest {
         }
     }
 
-    //Refactor into a setToRandomValues which returns a key value thing
+    //Refactor into a setToRandomValues which returns a list of key value pairs
 
     public void testToString(List<String> excludedFields) {
         List<String> stringValues = new ArrayList<>();
@@ -84,7 +84,7 @@ public class PojoTest {
 
             Method setterMethod = getSetterMethod(field);
 
-            Object randomValue = getRandomValueForField(field);
+            Object randomValue = randomObjectFactory.getRandomValueForField(field);
             stringValues.add(field.getName());
 
             String toString = randomValue.toString();
@@ -128,7 +128,75 @@ public class PojoTest {
         Method equalsMethod = getEqualsMethod();
         Method hashCodeMethod = getHashCodeMethod();
 
+        checkEmptyObjectsAreEqual(baseInstance, equalsInstance, equalsMethod);
+        checkEmptyObjectsHaveSameHashCode(baseInstance, equalsInstance, hashCodeMethod);
+
+        for (Field field : fields) {
+            if (excludedFields.contains(field.getName())) {
+                break;
+            }
+
+            Method setterMethod = getSetterMethod(field);
+
+            Object randomValue = randomObjectFactory.getRandomValueForField(field);
+            Object differentRandomValue = randomObjectFactory.getRandomValueForField(field);
+
+            Integer attemptNumber = 0;
+            while(differentRandomValue.equals(randomValue))
+            {
+                if(attemptNumber > 5)
+                {
+                    fail("Could not generate two different random values for field: " + field.getName());
+                }
+                differentRandomValue = randomObjectFactory.getRandomValueForField(field);
+                attemptNumber++;
+            }
+
+            try {
+                setterMethod.invoke(baseInstance, randomValue);
+                setterMethod.invoke(equalsInstance, randomValue);
+                setterMethod.invoke(differentInstance, differentRandomValue);
+
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                fail("Could not invoke setter method for field: " + field.getName());
+            }
+
+            testEqualsMethodForField(baseInstance, equalsInstance, differentInstance, field, equalsMethod);
+            testHashCodeForField(baseInstance, equalsInstance, differentInstance, field, hashCodeMethod);
+
+            //Set the value back to match so each test is not polluted by previous fields results
+            try {
+                setterMethod.invoke(differentInstance, randomValue);
+
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                fail("Could not invoke setter method for field: " + field.getName());
+            }
+        }
+    }
+
+    private void testEqualsMethodForField(Object baseInstance, Object equalsInstance, Object differentInstance, Field field, Method equalsMethod) {
+        Boolean expectedEqualResult = null;
+        Boolean expectedDifferentResult = null;
+
+        try {
+            expectedEqualResult = (Boolean) equalsMethod.invoke(baseInstance, equalsInstance);
+            expectedDifferentResult = (Boolean) equalsMethod.invoke(baseInstance, differentInstance);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            fail("Could not invoke equals method");
+        }
+
+        if (expectedEqualResult != true) {
+            fail("Changing the value of field: " + field.getName() + " resulted in the test objects not being equal but should have been");
+        }
+
+        if (expectedDifferentResult != false) {
+            fail("Changing the value of field: " + field.getName() + " resulted in the test objects being equal but should have been different");
+        }
+    }
+
+    private void checkEmptyObjectsAreEqual(Object baseInstance, Object equalsInstance, Method equalsMethod) {
         Boolean initialEqualsResult = null;
+
         try {
             initialEqualsResult = (Boolean) equalsMethod.invoke(baseInstance, equalsInstance);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -138,7 +206,9 @@ public class PojoTest {
         if (initialEqualsResult != true) {
             fail("Empty objects should have been equal but were not");
         }
+    }
 
+    private void checkEmptyObjectsHaveSameHashCode(Object baseInstance, Object equalsInstance, Method hashCodeMethod) {
         Integer initialHashCodeResult1 = null;
         Integer initialHashCodeResult2 = null;
 
@@ -152,80 +222,27 @@ public class PojoTest {
         if (!initialHashCodeResult2.equals(initialHashCodeResult1)) {
             fail("Empty objects should have had the same hashCode but did not");
         }
+    }
 
-        for (Field field : fields) {
-            if (excludedFields.contains(field.getName())) {
-                break;
-            }
+    private void testHashCodeForField(Object baseInstance, Object equalsInstance, Object differentInstance, Field field, Method hashCodeMethod) {
+        Integer hashCodeResult1 = null;
+        Integer hashCodeResult2 = null;
+        Integer hashCodeResult3 = null;
 
-            Method setterMethod = getSetterMethod(field);
+        try {
+            hashCodeResult1 = (Integer) hashCodeMethod.invoke(baseInstance);
+            hashCodeResult2 = (Integer) hashCodeMethod.invoke(equalsInstance);
+            hashCodeResult3 = (Integer) hashCodeMethod.invoke(differentInstance);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            fail("Could not invoke hashCode method");
+        }
 
-            Object randomValue = getRandomValueForField(field);
-            Object differentRandomValue = getRandomValueForField(field);
+        if (!hashCodeResult2.equals(hashCodeResult1)) {
+            fail("Changing the value of field: " + field.getName() + " resulted in the test objects hashCode not being equal but should have been");
+        }
 
-            Integer attemptNumber = 0;
-            while(differentRandomValue.equals(randomValue))
-            {
-                if(attemptNumber > 5)
-                {
-                    fail("Could not generate two different random values for field: " + field.getName());
-                }
-                differentRandomValue = getRandomValueForField(field);
-                attemptNumber++;
-            }
-
-            try {
-                setterMethod.invoke(baseInstance, randomValue);
-                setterMethod.invoke(equalsInstance, randomValue);
-                setterMethod.invoke(differentInstance, differentRandomValue);
-
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                fail("Could not invoke setter method for field: " + field.getName());
-            }
-
-            Boolean expectedEqualResult = null;
-            Boolean expectedDifferentResult = null;
-            try {
-                expectedEqualResult = (Boolean) equalsMethod.invoke(baseInstance, equalsInstance);
-                expectedDifferentResult = (Boolean) equalsMethod.invoke(baseInstance, differentInstance);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                fail("Could not invoke equals method");
-            }
-
-            if (expectedEqualResult != true) {
-                fail("Changing the value of field: " + field.getName() + " resulted in the test objects not being equal but should have been");
-            }
-
-            if (expectedDifferentResult != false) {
-                fail("Changing the value of field: " + field.getName() + " resulted in the test objects being equal but should have been different");
-            }
-
-            Integer hashCodeResult1 = null;
-            Integer hashCodeResult2 = null;
-            Integer hashCodeResult3 = null;
-            try {
-                hashCodeResult1 = (Integer) hashCodeMethod.invoke(baseInstance);
-                hashCodeResult2 = (Integer) hashCodeMethod.invoke(equalsInstance);
-                hashCodeResult3 = (Integer) hashCodeMethod.invoke(differentInstance);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                fail("Could not invoke hashCode method");
-            }
-
-            if (!hashCodeResult2.equals(hashCodeResult1)) {
-                fail("Changing the value of field: " + field.getName() + " resulted in the test objects hashCode not being equal but should have been");
-            }
-
-            if (hashCodeResult3.equals(hashCodeResult1)) {
-                fail("Changing the value of field: " + field.getName() + " resulted in the test objects hashCode being equal but should not have been");
-            }
-
-            //Set the value back to match so each test is not polluted by previous fields results
-            try {
-                setterMethod.invoke(differentInstance, randomValue);
-
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                fail("Could not invoke setter method for field: " + field.getName());
-            }
+        if (hashCodeResult3.equals(hashCodeResult1)) {
+            fail("Changing the value of field: " + field.getName() + " resulted in the test objects hashCode being equal but should not have been");
         }
     }
 
@@ -280,121 +297,6 @@ public class PojoTest {
             fail("Expected setter method: " + expectedSetterName + " was not found");
             return null;
         }
-    }
-
-    private Object getRandomValueForField(Field field) {
-        String typeName = convertTypeName(field.getType().getName());
-
-        return getRandomValueForNamedType(field, typeName);
-    }
-
-    private Object getRandomValueForNamedType(Field field, String typeName) {
-        Object randomValue = null;
-
-        Random random = new Random();
-        Boolean isArray = false;
-
-        if(typeName.contains("Array"))
-        {
-            isArray = true;
-            int endIndex = typeName.length() - "Array".length();
-
-            typeName = typeName.substring(0, endIndex);
-        }
-
-        Class<?> type = field.getType();
-
-        switch (typeName) {
-            case "Byte":
-            case "byte":
-                byte[] bytes = new byte[1];
-                random.nextBytes(bytes);
-                randomValue = Byte.valueOf(bytes[0]);
-                break;
-            case "Short":
-            case "short":
-                randomValue = (short) random.nextInt();
-                break;
-            case "Integer":
-            case "int":
-                randomValue = random.nextInt();
-                break;
-            case "BigDecimal":
-                randomValue = BigDecimal.valueOf(random.nextDouble());
-                break;
-            case "Long":
-            case "long":
-                randomValue = random.nextLong();
-                break;
-            case "Float":
-            case "float":
-                randomValue = random.nextFloat();
-                break;
-            case "Double":
-            case "double":
-                randomValue = random.nextDouble();
-                break;
-            case "Character":
-            case "char":
-                randomValue = RandomStringUtils.randomAlphabetic(1).charAt(0);
-                break;
-            case "String":
-                randomValue = RandomStringUtils.randomAlphabetic(5);
-                break;
-            case "Boolean":
-            case "boolean":
-                randomValue = random.nextBoolean();
-                break;
-            case "List":
-                String namedType = field.getGenericType().toString().replace("java.util.List<", "").replace(">", "");
-
-                Object randomListContent = getRandomValueForNamedType(field, convertTypeName(namedType));
-                randomValue = Arrays.asList(randomListContent);
-                break;
-            default:
-                try {
-                    randomValue = type.newInstance();
-                } catch (InstantiationException | IllegalAccessException e) {
-                    if(type.isEnum())
-                    {
-                        int x = random.nextInt(type.getEnumConstants().length);
-                        randomValue =  type.getEnumConstants()[x];
-                    }
-                    else
-                    {
-                        randomValue = null;
-                    }
-                }
-        }
-
-        if(isArray)
-        {
-            Object arrayInstance = Array.newInstance(type.getComponentType(), 1);
-            Array.set(arrayInstance, 0, randomValue);
-
-            return arrayInstance;
-        }
-
-        return randomValue;
-    }
-
-    private String convertTypeName(String typeName) {
-        if (typeName.contains("[L"))
-        {
-            typeName = typeName.substring("[L".length(),typeName.length() - 1);
-            typeName = typeName.concat("Array");
-        }
-
-        if (typeName.contains(JAVA_LANG)) {
-            typeName = typeName.substring(JAVA_LANG.length(), typeName.length());
-        }
-        else if (typeName.contains(JAVA_MATH)) {
-            typeName = typeName.substring(JAVA_MATH.length(), typeName.length());
-        }
-        else if (typeName.contains(JAVA_UTIL)) {
-            typeName = typeName.substring(JAVA_UTIL.length(), typeName.length());
-        }
-        return typeName;
     }
 
     private String getExpectedGetterName(Field field) {

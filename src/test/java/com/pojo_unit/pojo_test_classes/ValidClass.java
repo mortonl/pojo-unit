@@ -5,6 +5,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 
 public class ValidClass
@@ -28,6 +29,7 @@ public class ValidClass
     private Double testDouble;
     private double testPrimitiveDouble;
     private BigDecimal testBigDecimal;
+    private Date testDate;
     private List<String> testList;
     private String[] testArray;
 
@@ -167,6 +169,14 @@ public class ValidClass
         this.testBigDecimal = testBigDecimal;
     }
 
+    public Date getTestDate() {
+        return testDate;
+    }
+
+    public void setTestDate(Date testDate) {
+        this.testDate = testDate;
+    }
+
     public List<String> getTestList() {
         return testList;
     }
@@ -209,6 +219,7 @@ public class ValidClass
                 .append(testFloat, that.testFloat)
                 .append(testDouble, that.testDouble)
                 .append(testBigDecimal, that.testBigDecimal)
+                .append(testDate, that.testDate)
                 .append(testList, that.testList)
                 .append(testArray, that.testArray)
                 .isEquals();
@@ -234,6 +245,7 @@ public class ValidClass
                 .append(testDouble)
                 .append(testPrimitiveDouble)
                 .append(testBigDecimal)
+                .append(testDate)
                 .append(testList)
                 .append(testArray)
                 .toHashCode();
@@ -259,6 +271,7 @@ public class ValidClass
                 .append("testDouble", testDouble)
                 .append("testPrimitiveDouble", testPrimitiveDouble)
                 .append("testBigDecimal", testBigDecimal)
+                .append("testDate", testDate)
                 .append("testList", testList)
                 .append("testArray", testArray)
                 .toString();
