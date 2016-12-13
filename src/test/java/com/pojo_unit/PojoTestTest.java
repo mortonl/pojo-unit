@@ -7,6 +7,7 @@ import com.pojo_unit.pojo_test_classes.ClassMissingEqualsFields;
 import com.pojo_unit.pojo_test_classes.ClassMissingHashCode;
 import com.pojo_unit.pojo_test_classes.ClassMissingHashCodeFields;
 import com.pojo_unit.pojo_test_classes.ValidClass;
+import com.pojo_unit.pojo_test_classes.ValidClassWithDelegate;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -41,6 +42,36 @@ public class PojoTestTest
     public void testEqualsAndHashCodeWorkAsExpected()
     {
         PojoTest tester = new PojoTest(ValidClass.class);
+
+        ArrayList<String> excludedFields = new ArrayList<>();
+
+        tester.testEqualsAndHashCode(excludedFields);
+    }
+
+    @Test
+    public void testValidGettersAndSettersCanBeFoundAndUsedForClassWithDelegate()
+    {
+        PojoTest tester = new PojoTest(ValidClassWithDelegate.class);
+
+        ArrayList<String> excludedFields = new ArrayList<>();
+
+        tester.testGettersAndSetters(excludedFields);
+    }
+
+    @Test
+    public void testToStringWorksAsExpectedForClassWithDelegate()
+    {
+        PojoTest tester = new PojoTest(ValidClassWithDelegate.class);
+
+        ArrayList<String> excludedFields = new ArrayList<>();
+
+        tester.testToString(excludedFields);
+    }
+
+    @Test
+    public void testEqualsAndHashCodeWorkAsExpectedForClassWithDelegate()
+    {
+        PojoTest tester = new PojoTest(ValidClassWithDelegate.class);
 
         ArrayList<String> excludedFields = new ArrayList<>();
 

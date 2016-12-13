@@ -22,27 +22,7 @@ public class PojoTest {
     public PojoTest(final Class<?> clazzToTest) {
         this.clazzToTest = clazzToTest;
 
-        List<Field> fieldArrayList = new ArrayList<Field>();
-
-        Field[] declaredFields = clazzToTest.getDeclaredFields();
-
-        for(Field field : declaredFields)
-        {
-            if(isTestableField(field))
-            {
-                fieldArrayList.add(field);
-            }
-        }
-
-        this.fields = Collections.unmodifiableList(fieldArrayList);
-    }
-
-    private boolean isTestableField(Field field) {
-        return !isFieldFinal(field) && !field.isSynthetic();
-    }
-
-    private boolean isFieldFinal(Field field) {
-        return Modifier.isFinal(field.getModifiers());
+        this.fields = randomObjectFactory.getTestableFieldsForClass(clazzToTest);
     }
 
     public void testGettersAndSetters(List<String> excludedFields) {

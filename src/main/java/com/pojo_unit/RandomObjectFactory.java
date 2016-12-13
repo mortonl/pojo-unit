@@ -4,11 +4,20 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
+
+import static org.apache.commons.lang3.StringUtils.capitalize;
+import static org.junit.Assert.fail;
 
 public class RandomObjectFactory
 {
@@ -30,6 +39,30 @@ public class RandomObjectFactory
         String typeName = convertTypeName(field.getType().getName());
 
         return getRandomValueForNamedType(field, typeName);
+    }
+
+    private static boolean isTestableField(Field field) {
+        return !isFieldFinal(field) && !field.isSynthetic();
+    }
+
+    private static boolean isFieldFinal(Field field) {
+        return Modifier.isFinal(field.getModifiers());
+    }
+
+    public static List<Field> getTestableFieldsForClass(final Class<?> clazzToTest) {
+        List<Field> fieldArrayList = new ArrayList<Field>();
+
+        Field[] declaredFields = clazzToTest.getDeclaredFields();
+
+        for(Field field : declaredFields)
+        {
+            if(isTestableField(field))
+            {
+                fieldArrayList.add(field);
+            }
+        }
+
+        return Collections.unmodifiableList(fieldArrayList);
     }
 
     private Object getRandomValueForNamedType(Field field, String typeName)
@@ -94,7 +127,7 @@ public class RandomObjectFactory
                 randomValue = getRandomList(field);
                 break;
             default:
-                randomValue = instantiateType(type);
+                randomValue = createInnerObject(type);
         }
 
         if (isArray) {
@@ -102,6 +135,32 @@ public class RandomObjectFactory
             Array.set(arrayInstance, 0, randomValue);
 
             return arrayInstance;
+        }
+
+        return randomValue;
+    }
+
+    private Object createInnerObject(Class<?> type) {
+        Object randomValue = instantiateType(type);
+
+        List<Field> testableFieldsForClass = getTestableFieldsForClass(type);
+
+        if(!testableFieldsForClass.isEmpty()) {
+            Field innerField = testableFieldsForClass.get(0);
+
+            Object randomInnerValue = getRandomValueForField(innerField);
+
+            String expectedSetterName = "set" + capitalize(innerField.getName());
+            try {
+                Method setterMethod = type.getDeclaredMethod(expectedSetterName, innerField.getType());
+
+                setterMethod.invoke(randomValue, randomInnerValue);
+
+            } catch (NoSuchMethodException e) {
+                fail("Expected setter method: " + expectedSetterName + " was not found");
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                fail("Could not invoke setter method for field: " + innerField.getName());
+            }
         }
 
         return randomValue;
