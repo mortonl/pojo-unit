@@ -32,6 +32,8 @@ public class ValidClass
     private Date testDate;
     private List<String> testList;
     private String[] testArray;
+    private EnumExample testEnum;
+    private List<EnumExample> testEnumList;
 
     public Boolean isTestBoolean() {
         return testBoolean;
@@ -193,11 +195,31 @@ public class ValidClass
         this.testArray = testArray;
     }
 
+    public EnumExample getTestEnum() {
+        return testEnum;
+    }
+
+    public void setTestEnum(EnumExample testEnum) {
+        this.testEnum = testEnum;
+    }
+
+    public List<EnumExample> getTestEnumList() {
+        return testEnumList;
+    }
+
+    public void setTestEnumList(List<EnumExample> testEnumList) {
+        this.testEnumList = testEnumList;
+    }
+
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
+        if (this == o) {
+            return true;
+        }
 
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         ValidClass that = (ValidClass) o;
 
@@ -222,6 +244,8 @@ public class ValidClass
                 .append(testDate, that.testDate)
                 .append(testList, that.testList)
                 .append(testArray, that.testArray)
+                .append(testEnum, that.testEnum)
+                .append(testEnumList, that.testEnumList)
                 .isEquals();
     }
 
@@ -248,6 +272,8 @@ public class ValidClass
                 .append(testDate)
                 .append(testList)
                 .append(testArray)
+                .append(testEnum)
+                .append(testEnumList)
                 .toHashCode();
     }
 
@@ -274,6 +300,8 @@ public class ValidClass
                 .append("testDate", testDate)
                 .append("testList", testList)
                 .append("testArray", testArray)
+                .append("testEnum", testEnum)
+                .append("testEnumList", testEnumList)
                 .toString();
     }
 }

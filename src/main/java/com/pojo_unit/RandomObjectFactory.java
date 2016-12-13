@@ -127,6 +127,15 @@ public class RandomObjectFactory
                 randomValue = getRandomList(field);
                 break;
             default:
+                if (!field.getName().contains(typeName))
+                {
+                    try {
+                        type = Class.forName(typeName);
+                    } catch (ClassNotFoundException e) {
+                        fail("Could not find Class for type: " + typeName);
+                    }
+                }
+
                 randomValue = createInnerObject(type);
         }
 
@@ -187,8 +196,10 @@ public class RandomObjectFactory
     private Object getRandomList(Field field) {
         String namedType = field.getGenericType().toString().replace("java.util.List<", "").replace(">", "");
 
-        Object content1 = getRandomValueForNamedType(field, convertTypeName(namedType));
-        Object content2 = getRandomValueForNamedType(field, convertTypeName(namedType));
+        String convertedTypeName = convertTypeName(namedType);
+
+        Object content1 = getRandomValueForNamedType(field, convertedTypeName);
+        Object content2 = getRandomValueForNamedType(field, convertedTypeName);
 
         return Arrays.asList(content1, content2);
     }
