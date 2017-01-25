@@ -7,6 +7,8 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class ValidClass
 {
@@ -34,6 +36,8 @@ public class ValidClass
     private String[] testArray;
     private EnumExample testEnum;
     private List<EnumExample> testEnumList;
+    private Set<String> stringSet;
+    private Map<String, String> stringMap;
 
     public Boolean isTestBoolean() {
         return testBoolean;
@@ -211,8 +215,24 @@ public class ValidClass
         this.testEnumList = testEnumList;
     }
 
+    public final Set<String> getStringSet() {
+        return stringSet;
+    }
+
+    public final void setStringSet(final Set<String> stringSet) {
+        this.stringSet = stringSet;
+    }
+
+    public final Map<String, String> getStringMap() {
+        return stringMap;
+    }
+
+    public final void setStringMap(final Map<String, String> stringMap) {
+        this.stringMap = stringMap;
+    }
+
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }
@@ -246,6 +266,8 @@ public class ValidClass
                 .append(testArray, that.testArray)
                 .append(testEnum, that.testEnum)
                 .append(testEnumList, that.testEnumList)
+                .append(stringSet, that.stringSet)
+                .append(stringMap, that.stringMap)
                 .isEquals();
     }
 
@@ -274,6 +296,8 @@ public class ValidClass
                 .append(testArray)
                 .append(testEnum)
                 .append(testEnumList)
+                .append(stringSet)
+                .append(stringMap)
                 .toHashCode();
     }
 
@@ -302,6 +326,8 @@ public class ValidClass
                 .append("testArray", testArray)
                 .append("testEnum", testEnum)
                 .append("testEnumList", testEnumList)
+                .append("stringSet", stringSet)
+                .append("stringMap", stringMap)
                 .toString();
     }
 }

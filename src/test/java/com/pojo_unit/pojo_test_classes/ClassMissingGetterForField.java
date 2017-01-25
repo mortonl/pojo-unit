@@ -1,6 +1,6 @@
 package com.pojo_unit.pojo_test_classes;
 
-public class ClassMissingGetterAndSetterForField
+public class ClassMissingGetterForField
 {
     private Boolean testBoolean;
     private Character testCharacter;
@@ -11,5 +11,9 @@ public class ClassMissingGetterAndSetterForField
 
     public void setTestBoolean(Boolean testBoolean) {
         this.testBoolean = testBoolean;
+    }
+
+    public final void setTestCharacter(final Character testCharacter) {
+        this.testCharacter = testCharacter;
     }
 }

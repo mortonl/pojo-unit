@@ -4,60 +4,43 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.junit.Assert.fail;
 
-public class RandomObjectFactory
-{
-    private static final String JAVA_LANG = "java.lang.";
-    private static final String JAVA_MATH = "java.math.";
-    private static final String JAVA_UTIL = "java.util.";
-
-    private static final String ARRAY = "Array";
+public class RandomObjectFactory {
 
     private Random random;
 
-    public RandomObjectFactory()
-    {
+    public RandomObjectFactory() {
         random = new Random();
     }
 
-    public Object getRandomValueForField(Field field)
-    {
-        String typeName = convertTypeName(field.getType().getName());
-
-        return getRandomValueForNamedType(field, typeName);
-    }
-
-    private static boolean isTestableField(Field field) {
-        return !isFieldFinal(field) && !field.isSynthetic();
-    }
-
-    private static boolean isFieldFinal(Field field) {
-        return Modifier.isFinal(field.getModifiers());
-    }
-
     public static List<Field> getTestableFieldsForClass(final Class<?> clazzToTest) {
-        List<Field> fieldArrayList = new ArrayList<Field>();
+        return getTestableFieldsForClass(clazzToTest, new ArrayList<String>());
+    }
+
+    public static List<Field> getTestableFieldsForClass(final Class<?> clazzToTest, List<String> excludedFieldNames) {
+        List<Field> fieldArrayList = new ArrayList<>();
 
         Field[] declaredFields = clazzToTest.getDeclaredFields();
 
-        for(Field field : declaredFields)
-        {
-            if(isTestableField(field))
-            {
+        for (Field field : declaredFields) {
+            if (!isFieldExcluded(excludedFieldNames, field) && isTestableField(field)) {
                 fieldArrayList.add(field);
             }
         }
@@ -65,21 +48,175 @@ public class RandomObjectFactory
         return Collections.unmodifiableList(fieldArrayList);
     }
 
-    private Object getRandomValueForNamedType(Field field, String typeName)
-    {
-        Object randomValue = null;
+    private static boolean isTestableField(Field field) {
+        return !field.isSynthetic() && !Modifier.isStatic(field.getModifiers());
+    }
 
-        Boolean isArray = false;
+    private static boolean isFieldExcluded(final List<String> excludedFieldNames, final Field field) {
+        return excludedFieldNames.contains(field.getName());
+    }
 
-        if (typeName.contains(ARRAY))
-        {
-            isArray = true;
-            int endIndex = typeName.length() - ARRAY.length();
+    private Object createInnerObject(Class<?> type) {
+        Object randomValue = instantiateType(type);
 
-            typeName = typeName.substring(0, endIndex);
+        List<Field> testableFieldsForClass = getTestableFieldsForClass(type);
+
+        if (!testableFieldsForClass.isEmpty()) {
+            Field innerField = testableFieldsForClass.get(0);
+            innerField.setAccessible(true);
+
+            Object randomInnerValue = getRandomValueForField(innerField);
+
+            try {
+                innerField.set(randomValue, randomInnerValue);
+            } catch (IllegalAccessException e) {
+                fail("Could not set field value via reflection");
+            }
         }
 
+        return randomValue;
+    }
+
+    public Object getRandomValueForField(final Field field) {
         Class<?> type = field.getType();
+
+        boolean isCollection = Collection.class.isAssignableFrom(type);
+        boolean isMap = Map.class.isAssignableFrom(type);
+
+        if (isCollection || isMap) {
+            return getRandomCollection(field);
+        }
+
+        return getRandomValueForType(type);
+    }
+
+    private Object getRandomCollection(Field field) {
+        String genericTypeName = field.getGenericType().toString();
+
+        int beginIndex = genericTypeName.indexOf("<") + 1;
+        int endIndex = genericTypeName.indexOf(">");
+
+        String namedType = genericTypeName.substring(beginIndex, endIndex);
+        String collectionType = trimJavaPackageName(field.getType().getName());
+
+        boolean isMap = namedType.contains(",");
+        if(isMap)
+        {
+            return createRandomMap(namedType);
+        }
+
+        Class<?> innerType = null;
+
+        try {
+            innerType = Class.forName(namedType);
+        } catch (ClassNotFoundException e) {
+            fail("Could not find Class for innerType: " + namedType);
+        }
+
+        return getRandomValueForNamedCollectionType(collectionType, innerType);
+    }
+
+    private Object createRandomMap(final String namedType) {
+        String[] namedTypes = namedType.split(", ");
+
+        if(namedTypes.length > 2)
+        {
+            fail("More type arguments than expected for creating a hashMap");
+        }
+
+        Class<?> innerType1 = getClassByName(namedTypes[0]);
+        Object key = getRandomValueForType(innerType1);
+
+        Class<?> innerType2 = getClassByName(namedTypes[1]);
+        Object value = getRandomValueForType(innerType2);
+
+        Map<Object, Object> randomMap = new HashMap<>();
+
+        randomMap.put(key, value);
+
+        return randomMap;
+    }
+
+    private Class<?> getClassByName(final String namedType) {
+        Class<?> innerType = null;
+
+        try {
+            innerType = Class.forName(namedType);
+        } catch (ClassNotFoundException e) {
+            fail("Could not find Class for innerType: " + namedType);
+        }
+        return innerType;
+    }
+
+    public Object getRandomValueForNamedCollectionType(String typeName, Class<?> innerType) {
+        Object item1 = getRandomValueForType(innerType);
+        Object item2 = getRandomValueForType(innerType);
+
+        Object randomValue = null;
+
+        switch (typeName) {
+            case "List":
+                randomValue = Arrays.asList(item1, item2);
+                break;
+            case "Set":
+                randomValue = new HashSet<>(Arrays.asList(item1, item2));
+                break;
+            default:
+                fail("Couldn't generate a randomValue for collection type: " + typeName);
+        }
+
+        return randomValue;
+    }
+
+    public Object getRandomValueForType(final Class<?> type) {
+        String typeName = type.getName();
+
+        boolean isArray = type.isArray();
+
+        if (isArray) {
+            return createRandomArrayOfType(type);
+        }
+
+        boolean isJavaType = typeName.startsWith("java.");
+        boolean isPrimitive = type.isPrimitive();
+
+        if (isJavaType) {
+            typeName = trimJavaPackageName(typeName);
+        }
+
+        if (isJavaType || isPrimitive) {
+            return getRandomValueForBasicNamedType(typeName);
+        } else {
+            return createInnerObject(type);
+        }
+    }
+
+    public Object createRandomArrayOfType(final Class<?> type) {
+        Class<?> componentType = type.getComponentType();
+
+        Object firstItem = getRandomValueForType(componentType);
+
+        Object arrayInstance = Array.newInstance(componentType, 1);
+        Array.set(arrayInstance, 0, firstItem);
+
+        return arrayInstance;
+    }
+
+    private String trimJavaPackageName(final String typeName) {
+        String trimmedName = typeName;
+
+        Pattern pattern = Pattern.compile("java\\..*\\.");
+        Matcher matcher = pattern.matcher(typeName);
+
+        if (matcher.find()) {
+            trimmedName = typeName.substring(matcher.end(), typeName.length());
+        }
+
+        return trimmedName;
+    }
+
+    public Object getRandomValueForBasicNamedType(String typeName) {
+        Object randomValue = null;
 
         switch (typeName) {
             case "Byte":
@@ -123,85 +260,11 @@ public class RandomObjectFactory
             case "boolean":
                 randomValue = random.nextBoolean();
                 break;
-            case "List":
-                randomValue = getRandomList(field);
-                break;
             default:
-                if (!field.getName().contains(typeName))
-                {
-                    try {
-                        type = Class.forName(typeName);
-                    } catch (ClassNotFoundException e) {
-                        fail("Could not find Class for type: " + typeName);
-                    }
-                }
-
-                randomValue = createInnerObject(type);
-        }
-
-        if (isArray) {
-            Object arrayInstance = Array.newInstance(type.getComponentType(), 1);
-            Array.set(arrayInstance, 0, randomValue);
-
-            return arrayInstance;
+                fail("Couldn't generate a randomValue for type: " + typeName);
         }
 
         return randomValue;
-    }
-
-    private Object createInnerObject(Class<?> type) {
-        Object randomValue = instantiateType(type);
-
-        List<Field> testableFieldsForClass = getTestableFieldsForClass(type);
-
-        if(!testableFieldsForClass.isEmpty()) {
-            Field innerField = testableFieldsForClass.get(0);
-
-            Object randomInnerValue = getRandomValueForField(innerField);
-
-            String expectedSetterName = "set" + capitalize(innerField.getName());
-            try {
-                Method setterMethod = type.getDeclaredMethod(expectedSetterName, innerField.getType());
-
-                setterMethod.invoke(randomValue, randomInnerValue);
-
-            } catch (NoSuchMethodException e) {
-                fail("Expected setter method: " + expectedSetterName + " was not found");
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                fail("Could not invoke setter method for field: " + innerField.getName());
-            }
-        }
-
-        return randomValue;
-    }
-
-    private Object instantiateType(Class<?> type) {
-        Object randomValue;
-
-        try {
-            randomValue = type.newInstance();
-
-        } catch (InstantiationException | IllegalAccessException e) {
-            if (type.isEnum()) {
-                int x = random.nextInt(type.getEnumConstants().length);
-                randomValue = type.getEnumConstants()[x];
-            } else {
-                randomValue = null;
-            }
-        }
-
-        return randomValue;
-    }
-
-    private Object getRandomList(Field field) {
-        String namedType = field.getGenericType().toString().replace("java.util.List<", "").replace(">", "");
-
-        String convertedTypeName = convertTypeName(namedType);
-
-        Object content1 = getRandomValueForNamedType(field, convertedTypeName);
-        Object content2 = getRandomValueForNamedType(field, convertedTypeName);
-
-        return Arrays.asList(content1, content2);
     }
 
     private Date getRandomDate() {
@@ -225,21 +288,20 @@ public class RandomObjectFactory
         return Byte.valueOf(bytes[0]);
     }
 
-    private String convertTypeName(String typeName)
-    {
-        String convertedName = typeName;
+    private Object instantiateType(Class<?> type) {
+        Object randomValue;
 
-        if (convertedName.contains("[L"))
-        {
-            convertedName = convertedName.substring("[L".length(), convertedName.length() - 1);
-            convertedName = convertedName.concat(ARRAY);
+        try {
+            randomValue = type.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            if (type.isEnum()) {
+                int x = random.nextInt(type.getEnumConstants().length);
+                randomValue = type.getEnumConstants()[x];
+            } else {
+                randomValue = null;
+            }
         }
 
-        if (convertedName.contains(JAVA_LANG) || convertedName.contains(JAVA_MATH) || convertedName.contains(JAVA_UTIL))
-        {
-            convertedName = convertedName.substring(JAVA_LANG.length(), convertedName.length());
-        }
-
-        return convertedName;
+        return randomValue;
     }
 }

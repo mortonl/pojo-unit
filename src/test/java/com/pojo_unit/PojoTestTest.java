@@ -1,16 +1,16 @@
 package com.pojo_unit;
 
 import com.pojo_unit.pojo_test_classes.ClassMissingEquals;
-import com.pojo_unit.pojo_test_classes.ClassMissingGetterAndSetterForBooleanField;
-import com.pojo_unit.pojo_test_classes.ClassMissingGetterAndSetterForField;
+import com.pojo_unit.pojo_test_classes.ClassMissingGetterForBooleanField;
+import com.pojo_unit.pojo_test_classes.ClassMissingGetterForField;
+import com.pojo_unit.pojo_test_classes.ClassMissingSetterForField;
 import com.pojo_unit.pojo_test_classes.ClassMissingEqualsFields;
 import com.pojo_unit.pojo_test_classes.ClassMissingHashCode;
 import com.pojo_unit.pojo_test_classes.ClassMissingHashCodeFields;
+import com.pojo_unit.pojo_test_classes.ClassWithoutNoArgumentConstructor;
 import com.pojo_unit.pojo_test_classes.ValidClass;
 import com.pojo_unit.pojo_test_classes.ValidClassWithDelegate;
 import org.junit.Test;
-
-import java.util.ArrayList;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -23,9 +23,7 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ValidClass.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
-        tester.testGettersAndSetters(excludedFields);
+        tester.testGettersAndSetters();
     }
 
     @Test
@@ -33,9 +31,7 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ValidClass.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
-        tester.testToString(excludedFields);
+        tester.testToString();
     }
 
     @Test
@@ -43,9 +39,7 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ValidClass.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
-        tester.testEqualsAndHashCode(excludedFields);
+        tester.testEqualsAndHashCode();
     }
 
     @Test
@@ -53,9 +47,7 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ValidClassWithDelegate.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
-        tester.testGettersAndSetters(excludedFields);
+        tester.testGettersAndSetters();
     }
 
     @Test
@@ -63,9 +55,7 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ValidClassWithDelegate.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
-        tester.testToString(excludedFields);
+        tester.testToString();
     }
 
     @Test
@@ -73,21 +63,17 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ValidClassWithDelegate.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
-        tester.testEqualsAndHashCode(excludedFields);
+        tester.testEqualsAndHashCode();
     }
 
     @Test
     public void testBooleanGetterMissing()
     {
-        PojoTest tester = new PojoTest(ClassMissingGetterAndSetterForBooleanField.class);
-
-        ArrayList<String> excludedFields = new ArrayList<>();
+        PojoTest tester = new PojoTest(ClassMissingGetterForBooleanField.class);
 
         try
         {
-            tester.testGettersAndSetters(excludedFields);
+            tester.testGettersAndSetters();
         }
         catch (AssertionError error)
         {
@@ -96,15 +82,28 @@ public class PojoTestTest
     }
 
     @Test
-    public void testStandardGetterMissing()
+    public void testStandardSetterMissing()
     {
-        PojoTest tester = new PojoTest(ClassMissingGetterAndSetterForField.class);
-
-        ArrayList<String> excludedFields = new ArrayList<>();
+        PojoTest tester = new PojoTest(ClassMissingSetterForField.class);
 
         try
         {
-            tester.testGettersAndSetters(excludedFields);
+            tester.testGettersAndSetters();
+        }
+        catch (AssertionError error)
+        {
+            assertThat(error.getMessage(), is(equalTo("Expected setter method: setTestCharacter was not found")));
+        }
+    }
+
+    @Test
+    public void testStandardGetterMissing()
+    {
+        PojoTest tester = new PojoTest(ClassMissingGetterForField.class);
+
+        try
+        {
+            tester.testGettersAndSetters();
         }
         catch (AssertionError error)
         {
@@ -112,16 +111,15 @@ public class PojoTestTest
         }
     }
 
+
     @Test
     public void testEqualsMissing()
     {
         PojoTest tester = new PojoTest(ClassMissingEquals.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
         try
         {
-            tester.testEqualsAndHashCode(excludedFields);
+            tester.testEqualsAndHashCode();
         }
         catch (AssertionError error)
         {
@@ -134,11 +132,9 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ClassMissingEqualsFields.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
         try
         {
-            tester.testEqualsAndHashCode(excludedFields);
+            tester.testEqualsAndHashCode();
         }
         catch (AssertionError error)
         {
@@ -151,11 +147,9 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ClassMissingHashCode.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
         try
         {
-            tester.testEqualsAndHashCode(excludedFields);
+            tester.testEqualsAndHashCode();
         }
         catch (AssertionError error)
         {
@@ -168,15 +162,45 @@ public class PojoTestTest
     {
         PojoTest tester = new PojoTest(ClassMissingHashCodeFields.class);
 
-        ArrayList<String> excludedFields = new ArrayList<>();
-
         try
         {
-            tester.testEqualsAndHashCode(excludedFields);
+            tester.testEqualsAndHashCode();
         }
         catch (AssertionError error)
         {
             assertThat(error.getMessage(), is(equalTo("Changing the value of field: testCharacter resulted in the test objects hashCode being equal but should not have been")));
         }
+    }
+
+    @Test
+    public void testGettersAndSettersCanBeTestedForClassWithoutANoArgumentConstructor()
+    {
+        PojoTest tester = new PojoTest(ClassWithoutNoArgumentConstructor.class);
+
+        tester.testGettersAndSetters();
+    }
+
+    @Test
+    public void testMissingGettersCanBeTestedForClassWithoutANoArgumentConstructor()
+    {
+        PojoTest tester = new PojoTest(ClassWithoutNoArgumentConstructor.class);
+
+        tester.testGettersAndSetters();
+    }
+
+    @Test
+    public void testToStringForClassWithoutANoArgumentConstructor()
+    {
+        PojoTest tester = new PojoTest(ClassWithoutNoArgumentConstructor.class);
+
+        tester.testToString();
+    }
+
+    @Test
+    public void testEqualsAndHashCodeForClassWithoutANoArgumentConstructor()
+    {
+        PojoTest tester = new PojoTest(ClassWithoutNoArgumentConstructor.class);
+
+        tester.testEqualsAndHashCode();
     }
 }
