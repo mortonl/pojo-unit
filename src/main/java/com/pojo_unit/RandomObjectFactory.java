@@ -3,7 +3,9 @@ package com.pojo_unit;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -100,8 +102,7 @@ public class RandomObjectFactory {
         String collectionType = trimJavaPackageName(field.getType().getName());
 
         boolean isMap = namedType.contains(",");
-        if(isMap)
-        {
+        if (isMap) {
             return createRandomMap(namedType);
         }
 
@@ -119,8 +120,7 @@ public class RandomObjectFactory {
     private Object createRandomMap(final String namedType) {
         String[] namedTypes = namedType.split(", ");
 
-        if(namedTypes.length > 2)
-        {
+        if (namedTypes.length > 2) {
             fail("More type arguments than expected for creating a hashMap");
         }
 
@@ -260,6 +260,9 @@ public class RandomObjectFactory {
             case "boolean":
                 randomValue = random.nextBoolean();
                 break;
+            case "List":
+                randomValue = new ArrayList<>();
+                break;
             default:
                 fail("Couldn't generate a randomValue for type: " + typeName);
         }
@@ -289,19 +292,86 @@ public class RandomObjectFactory {
     }
 
     private Object instantiateType(Class<?> type) {
-        Object randomValue;
+        Object randomValue = null;
 
-        try {
-            randomValue = type.newInstance();
-        } catch (InstantiationException | IllegalAccessException e) {
+        if (classHasZeroArgumentPublicConstructor(type)) {
+            try {
+                randomValue = type.newInstance();
+            } catch (InstantiationException | IllegalAccessException e) {
+                fail("Could not instantiate type: " + type);
+            }
+        } else {
             if (type.isEnum()) {
                 int x = random.nextInt(type.getEnumConstants().length);
                 randomValue = type.getEnumConstants()[x];
             } else {
-                randomValue = null;
+                randomValue = createObjectInstanceUsingParametrisedConstructor(type);
             }
         }
 
+        if (randomValue == null) {
+            fail("Could not instantiate type: " + type);
+        }
+
         return randomValue;
+    }
+
+    public boolean classHasZeroArgumentPublicConstructor(Class<?> type) {
+        for (Constructor<?> constructor : type.getConstructors()) {
+            Class<?>[] parameterTypes = constructor.getParameterTypes();
+
+            if (parameterTypes.length == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Object createObjectInstanceUsingParametrisedConstructor(Class<?> type) {
+        Constructor<?> constructor = getSmallestConstructor(type);
+        List<Object> parameters = new ArrayList<>();
+
+        for (Class<?> parameterType : constructor.getParameterTypes()) {
+            Object randomValue = getRandomValueForType(parameterType);
+            parameters.add(randomValue);
+        }
+
+        Object testableInstance = null;
+
+        try {
+            testableInstance = constructor.newInstance(parameters.toArray());
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            fail("Could not instantiate class");
+        }
+        return testableInstance;
+    }
+
+    public Constructor<?> getSmallestConstructor(Class<?> type) {
+        Constructor<?>[] constructors = type.getConstructors();
+
+        if (constructors.length == 0) {
+            fail("Class doesn't have any public constructors");
+        }
+
+        Constructor<?> smallestConstructor = null;
+        Integer smallestParameterCount = null;
+
+        for (Constructor<?> constructor : constructors) {
+            Class<?>[] parameterTypes = constructor.getParameterTypes();
+
+            int constructorParameters = parameterTypes.length;
+
+            if (smallestParameterCount == null || constructorParameters < smallestParameterCount) {
+
+                smallestParameterCount = constructorParameters;
+                smallestConstructor = constructor;
+
+                if (constructorParameters == 1) {
+                    break;
+                }
+            }
+        }
+
+        return smallestConstructor;
     }
 }

@@ -15,6 +15,8 @@ import static org.junit.Assert.fail;
 
 public class PojoTest {
 
+    private static final int ATTEMPTS_TO_GENERATE_DIFFERENT_VALUES = 10;
+
     private final Class<?> clazzToTest;
     private final List<Field> testableFields;
     private final RandomObjectFactory randomObjectFactory;
@@ -88,22 +90,10 @@ public class PojoTest {
     private Object getTestableInstance() {
         Object testableInstance = null;
 
-        if (classHasZeroArgumentPublicConstructor()) {
+        if (randomObjectFactory.classHasZeroArgumentPublicConstructor(clazzToTest)) {
             testableInstance = getObjectInstance();
         } else {
-            Constructor<?> constructor = getSmallestConstructor();
-            List<Object> parameters = new ArrayList<>();
-
-            for (Class<?> parameterType : constructor.getParameterTypes()) {
-                Object randomValue = randomObjectFactory.getRandomValueForType(parameterType);
-                parameters.add(randomValue);
-            }
-
-            try {
-                testableInstance = constructor.newInstance(parameters.toArray());
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                fail("Could not instantiate class");
-            }
+            testableInstance = randomObjectFactory.createObjectInstanceUsingParametrisedConstructor(clazzToTest);
         }
 
         return testableInstance;
@@ -118,46 +108,6 @@ public class PojoTest {
             fail("Could not instantiate class");
         }
         return testableInstance;
-    }
-
-    private boolean classHasZeroArgumentPublicConstructor() {
-        for (Constructor<?> constructor : clazzToTest.getConstructors()) {
-            Class<?>[] parameterTypes = constructor.getParameterTypes();
-
-            if (parameterTypes.length == 0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Constructor<?> getSmallestConstructor() {
-        Constructor<?>[] constructors = clazzToTest.getConstructors();
-
-        if (constructors.length == 0) {
-            fail("Class doesn't have any public constructors");
-        }
-
-        Constructor<?> smallestConstructor = null;
-        Integer smallestParameterCount = null;
-
-        for (Constructor<?> constructor : constructors) {
-            Class<?>[] parameterTypes = constructor.getParameterTypes();
-
-            int constructorParameters = parameterTypes.length;
-
-            if (smallestParameterCount == null || constructorParameters < smallestParameterCount) {
-
-                smallestParameterCount = constructorParameters;
-                smallestConstructor = constructor;
-
-                if (constructorParameters == 1) {
-                    break;
-                }
-            }
-        }
-
-        return smallestConstructor;
     }
 
     private boolean isFieldExcluded(final List<String> fieldsExcluded, final String fieldName) {
@@ -318,7 +268,7 @@ public class PojoTest {
 
             Integer attemptNumber = 0;
             while (differentRandomValue.equals(randomValue)) {
-                if (attemptNumber > 5) {
+                if (attemptNumber > ATTEMPTS_TO_GENERATE_DIFFERENT_VALUES) {
                     fail("Could not generate two different random values for field: " + fieldName);
                 }
                 differentRandomValue = randomObjectFactory.getRandomValueForField(field);
@@ -342,12 +292,12 @@ public class PojoTest {
         Object testableInstance2 = null;
         Object testableInstance3 = null;
 
-        if (classHasZeroArgumentPublicConstructor()) {
+        if (randomObjectFactory.classHasZeroArgumentPublicConstructor(clazzToTest)) {
             testableInstance1 = getObjectInstance();
             testableInstance2 = getObjectInstance();
             testableInstance3 = getObjectInstance();
         } else {
-            Constructor<?> constructor = getSmallestConstructor();
+            Constructor<?> constructor = randomObjectFactory.getSmallestConstructor(clazzToTest);
             List<Object> parameters = new ArrayList<>();
 
             for (Class<?> parameterType : constructor.getParameterTypes()) {

@@ -7,6 +7,7 @@ import com.pojo_unit.pojo_test_classes.ClassMissingSetterForField;
 import com.pojo_unit.pojo_test_classes.ClassMissingEqualsFields;
 import com.pojo_unit.pojo_test_classes.ClassMissingHashCode;
 import com.pojo_unit.pojo_test_classes.ClassMissingHashCodeFields;
+import com.pojo_unit.pojo_test_classes.ClassWithDelegateThatUsesParametrisedConstructor;
 import com.pojo_unit.pojo_test_classes.ClassWithoutNoArgumentConstructor;
 import com.pojo_unit.pojo_test_classes.ValidClass;
 import com.pojo_unit.pojo_test_classes.ValidClassWithDelegate;
@@ -202,5 +203,13 @@ public class PojoTestTest
         PojoTest tester = new PojoTest(ClassWithoutNoArgumentConstructor.class);
 
         tester.testEqualsAndHashCode();
+    }
+
+    @Test
+    public void testGettersAndSettersCanBeTestedForClassWithDelegateThatUsesParametrisedConstructor()
+    {
+        PojoTest tester = new PojoTest(ClassWithDelegateThatUsesParametrisedConstructor.class);
+
+        tester.testGettersAndSetters();
     }
 }
